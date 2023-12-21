@@ -184,6 +184,8 @@ typedef enum {
     MODBUS_QUIRK_ALL = 0xFF
 } modbus_quirks;
 
+typedef void (*modbus_read_write_register_callback)(void);
+
 MODBUS_API int modbus_set_slave(modbus_t *ctx, int slave);
 MODBUS_API int modbus_get_slave(modbus_t *ctx);
 MODBUS_API int modbus_set_error_recovery(modbus_t *ctx,
@@ -265,6 +267,13 @@ MODBUS_API int modbus_reply(modbus_t *ctx,
                             const uint8_t *req,
                             int req_length,
                             modbus_mapping_t *mb_mapping);
+
+MODBUS_API int modbus_reply_with_calback(modbus_t* ctx,
+                            const uint8_t* req,
+                            int req_length,
+                            modbus_mapping_t* mb_mapping,
+                            modbus_read_write_register_callback callback);
+
 MODBUS_API int
 modbus_reply_exception(modbus_t *ctx, const uint8_t *req, unsigned int exception_code);
 MODBUS_API int modbus_enable_quirks(modbus_t *ctx, unsigned int quirks_mask);
