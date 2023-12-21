@@ -768,16 +768,24 @@ static int response_exception(modbus_t *ctx,
     return rsp_length;
 }
 
+int modbus_reply(modbus_t* ctx,
+    const uint8_t* req,
+    int req_length,
+    modbus_mapping_t* mb_mapping) {
+    return modbus_reply(ctx, req, req_length, mb_mapping, NULL);
+}
+
 /* Send a response to the received request.
    Analyses the request and constructs a response.
 
    If an error occurs, this function construct the response
    accordingly.
 */
-int modbus_reply(modbus_t *ctx,
+int modbus_reply_with_calback(modbus_t *ctx,
                  const uint8_t *req,
                  int req_length,
-                 modbus_mapping_t *mb_mapping)
+                 modbus_mapping_t *mb_mapping,
+                 modbus_read_write_register_callback callback)
 {
     unsigned int offset;
     int slave;
@@ -1106,6 +1114,11 @@ int modbus_reply(modbus_t *ctx,
                  i++, j += 2) {
                 mb_mapping->tab_registers[i] =
                     (req[offset + j] << 8) + req[offset + j + 1];
+            }
+
+            // handle read registers values from external system
+            if (callback != NULL) {
+                (*callback)();
             }
 
             /* and read the data for the response */

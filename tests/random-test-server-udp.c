@@ -7,6 +7,10 @@
 
 #include <modbus.h>
 
+void mb_callback() {
+    printf("Modbus callback called\n");
+}
+
 int main(void)
 {
     modbus_t* ctx;
@@ -32,7 +36,7 @@ int main(void)
         rc = modbus_receive(ctx, query);
         if (rc != -1) {
             /* rc is the query size */
-            modbus_reply(ctx, query, rc, mb_mapping);
+            modbus_reply_with_calback(ctx, query, rc, mb_mapping, mb_callback);
         }
         else {
             /* Connection closed by the client or error */
