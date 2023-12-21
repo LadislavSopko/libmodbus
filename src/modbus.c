@@ -772,7 +772,7 @@ int modbus_reply(modbus_t* ctx,
     const uint8_t* req,
     int req_length,
     modbus_mapping_t* mb_mapping) {
-    return modbus_reply(ctx, req, req_length, mb_mapping, NULL);
+    return modbus_reply_with_calback(ctx, req, req_length, mb_mapping, NULL);
 }
 
 /* Send a response to the received request.
