@@ -184,7 +184,14 @@ typedef enum {
     MODBUS_QUIRK_ALL = 0xFF
 } modbus_quirks;
 
+typedef struct _modbus_register_changed_value {
+    uint16_t    address;
+    uint16_t    old_value;
+    uint16_t    new_value;
+} modbus_register_changed_value;
+
 typedef void (*modbus_read_write_register_callback)(void);
+typedef void (*modbus_write_register_callback)(uint16_t count, modbus_register_changed_value const*);
 
 MODBUS_API int modbus_set_slave(modbus_t *ctx, int slave);
 MODBUS_API int modbus_get_slave(modbus_t *ctx);
@@ -272,7 +279,8 @@ MODBUS_API int modbus_reply_with_calback(modbus_t* ctx,
                             const uint8_t* req,
                             int req_length,
                             modbus_mapping_t* mb_mapping,
-                            modbus_read_write_register_callback callback);
+                            modbus_read_write_register_callback rw_callback,
+                            modbus_write_register_callback w_callback);
 
 MODBUS_API int
 modbus_reply_exception(modbus_t *ctx, const uint8_t *req, unsigned int exception_code);

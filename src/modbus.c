@@ -772,7 +772,7 @@ int modbus_reply(modbus_t* ctx,
     const uint8_t* req,
     int req_length,
     modbus_mapping_t* mb_mapping) {
-    return modbus_reply_with_calback(ctx, req, req_length, mb_mapping, NULL);
+    return modbus_reply_with_calback(ctx, req, req_length, mb_mapping, NULL, NULL);
 }
 
 /* Send a response to the received request.
@@ -785,7 +785,8 @@ int modbus_reply_with_calback(modbus_t *ctx,
                  const uint8_t *req,
                  int req_length,
                  modbus_mapping_t *mb_mapping,
-                 modbus_read_write_register_callback callback)
+                 modbus_read_write_register_callback rw_callback,
+                 modbus_write_register_callback w_callback)
 {
     unsigned int offset;
     int slave;
@@ -940,7 +941,27 @@ int modbus_reply_with_calback(modbus_t *ctx,
         } else {
             int data = (req[offset + 3] << 8) + req[offset + 4];
 
-            mb_mapping->tab_registers[mapping_address] = data;
+            if (w_callback != NULL) {
+                // old value
+                uint16_t old = mb_mapping->tab_registers[mapping_address];
+
+                // chack change
+                if(old != data) {
+                    modbus_register_changed_value change;
+                    change.address = mapping_address;
+                    change.old_value = old;
+                    change.new_value = data;
+
+                    mb_mapping->tab_registers[mapping_address] = data;
+
+                    (*w_callback)(1, &change);
+                }
+            }
+            else {
+                mb_mapping->tab_registers[mapping_address] = data;
+            }
+
+            
             memcpy(rsp, req, req_length);
             rsp_length = req_length;
         }
@@ -1009,10 +1030,41 @@ int modbus_reply_with_calback(modbus_t *ctx,
                                    mapping_address < 0 ? address : address + nb);
         } else {
             int i, j;
-            for (i = mapping_address, j = 6; i < mapping_address + nb; i++, j += 2) {
-                /* 6 and 7 = first value */
-                mb_mapping->tab_registers[i] =
-                    (req[offset + j] << 8) + req[offset + j + 1];
+
+            if(w_callback != NULL) {
+                modbus_register_changed_value changes[MODBUS_MAX_WRITE_REGISTERS];
+                int chCnt = 0;
+
+                // clear ram for at least number of written registers
+                memset(changes, 0, nb * sizeof(modbus_register_changed_value));
+
+                // write values anche do check for changes
+                for (i = mapping_address, j = 6; i < mapping_address + nb; i++, j += 2) {
+                    // old
+                    uint16_t oldVal = mb_mapping->tab_registers[i];
+                    // new 6 and 7 = first value */
+                    uint16_t newVal = (req[offset + j] << 8) + req[offset + j + 1];
+
+                    if(oldVal != newVal) {
+                        changes[chCnt].address = i;
+                        changes[chCnt].old_value = oldVal;
+                        changes[chCnt++].new_value = newVal;
+                        mb_mapping->tab_registers[i] = newVal;
+                    }
+                }
+
+                // something was changed so call callback
+                if (chCnt > 0) {
+                    (*w_callback)(chCnt, changes);
+                }
+            }
+            else {
+
+                for (i = mapping_address, j = 6; i < mapping_address + nb; i++, j += 2) {
+                    /* 6 and 7 = first value */
+                    mb_mapping->tab_registers[i] =
+                        (req[offset + j] << 8) + req[offset + j + 1];
+                }
             }
 
             rsp_length = ctx->backend->build_response_basis(&sft, rsp);
@@ -1117,8 +1169,8 @@ int modbus_reply_with_calback(modbus_t *ctx,
             }
 
             // handle read registers values from external system
-            if (callback != NULL) {
-                (*callback)();
+            if (rw_callback != NULL) {
+                (*rw_callback)();
             }
 
             /* and read the data for the response */

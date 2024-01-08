@@ -7,8 +7,16 @@
 
 #include <modbus.h>
 
-void mb_callback() {
-    printf("Modbus callback called\n");
+void mb_rw_callback() {
+    printf("Modbus RW callback called.\n");
+}
+
+void mb_w_callback(uint16_t cnt, modbus_register_changed_value const * changes) {
+    printf("Modbus W callback called with: [%d] changes.\n", cnt);
+
+    for(int i = 0; i < cnt; i++) {
+        printf("Address: %d, value: %d -> %d\n", changes[i].address, changes[i].old_value, changes[i].new_value);
+    }
 }
 
 int main(void)
@@ -36,7 +44,7 @@ int main(void)
         rc = modbus_receive(ctx, query);
         if (rc != -1) {
             /* rc is the query size */
-            modbus_reply_with_calback(ctx, query, rc, mb_mapping, mb_callback);
+            modbus_reply_with_calback(ctx, query, rc, mb_mapping, mb_rw_callback, mb_w_callback);
         }
         else {
             /* Connection closed by the client or error */
